@@ -1,12 +1,13 @@
 import numpy as np, pandas as pd
 import functools as fn
 import math
+import sys
 np.random.seed(5)
 datalen = 9
 rate = 1
 
 # Read csv
-df = pd.read_csv('train.csv', sep=',', header='infer').replace('NR', 0)
+df = pd.read_csv(sys.argv[1], sep=',', header='infer').replace('NR', 0)
 df.columns = ['Date', 'Site', 'Type'] + df.columns[3:].tolist()
 
 # Reshape
@@ -26,12 +27,13 @@ df = df.drop('variable', axis='columns').pivot('Type', 'Date').value.T.astype(fl
 
 def extract(df):
     df['Ans'] = np.copy(df['PM2.5'].values)
-    df = df[['PM2.5', 'Ans']]
+    #  df = df[['PM2.5', 'Ans']]
+    df = df[['PM2.5', 'Ans', 'SO2']]
     #  df = df[['PM2.5', 'Ans', 'SO2', 'RAINFALL', 'O3']]
     x = df['PM2.5']
     #  df['PM2.5l'] = (x+1000000).map(math.log)
     #  df['O3'] = (df['O3']+2).map(math.log)
-    #  df['SO2'] = (df['SO2']+2).map(math.log)
+    df['SO2'] = (df['SO2']+2).map(math.log)
     #  df['CH4'] = (df['CH4']+2).map(math.log)
     #  df['RAINFALL'] = 1.01**df['RAINFALL']
 
@@ -130,7 +132,21 @@ print "rate: %f, lam: %.20f, train : %f" %(best_lr, best_lam, rmse(best_ker, dat
 print best_ker
 print "Calculating result"
 
-test = pd.read_csv('t2.csv', sep=',', names=['id', 'Type'] + range(9)).replace('NR', 0)
+test = pd.read_csv(sys.argv[2], sep=',', names=['id', 'Type'] + range(9)).replace('NR', 0)
+d = test[test['id'] == 'id_38'][test['Type'] == 'PM2.5']
+if not d.empty:
+    if (d[7] == '-1').bool():
+        test.set_value(d.index[0], 7, 4)
+
+d = test[test['id'] == 'id_89'][test['Type'] == 'SO2']
+if not d.empty:
+    if (d[4] == '-3.6').bool():
+        test.set_value(d.index[0], 4, 0)
+
+d = test[test['id'] == 'id_230'][test['Type'] == 'PM2.5']
+if not d.empty:
+    if (d[0] == '-1').bool():
+        test.set_value(d.index[0], 0, 28)
 testId = [ id for id, x in test.groupby('id') ]
 test = np.array([
           np.append(
@@ -145,5 +161,5 @@ test = np.array([
           for id, x in test.groupby('id') ])
 result = zip(testId, np.matmul(test, best_ker))
 result.sort(key=lambda x: int(x[0][3:]))
-with open('opt', 'w') as f:
+with open(sys.argv[3], 'w') as f:
     f.write('id,value\n' + ''.join(['%s,%f\n'%x for x in result]))

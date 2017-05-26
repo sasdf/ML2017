@@ -1,2 +1,2 @@
 #!/bin/bash
-python3.6 vote.py "$1" "$2"
+python3.6 vote.py train.csv "$1" "$2"
